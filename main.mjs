@@ -11,64 +11,101 @@ cli=new Client({intents:[
 	GatewayIntentBits.GuildMessages,
 	GatewayIntentBits.MessageContent
 ]}),
-p=createAudioPlayer(),
+gd={},
 
-query=({path,params,base=CFG.vv_http})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
-post=async({path,params,body,method='POST',headers})=>await fetch(query({path,params}),{headers,method,body}),
-getAudioQuery=async w=>await(await post({path:'audio_query',params:w})).json(),
-synth=async w=>await post({
-	path:'synthesis',params:w,
-	headers:{'Content-Type':'application/json'},
-	body:JSON.stringify(await getAudioQuery(w))
-}),
-play=async w=>p.play(createAudioResource((await synth(w)).body)),
-
-disconn=_=>(conn&&conn.disconnect(),conn=null),
+disconn=g=>(gd[g]?.conn?.destroy?.(),[gd[g]?.ch,delete gd[g]][0]),
 cmds={
-	con:Object.assign(async intr=>{
-		const ch=intr?.member?.voice?.channel;
-		if(!ch)return intr.reply('VCに接続していないようです');
-
-		conn=joinVoiceChannel({
-			channelId:ch.id,
-			guildId:ch.guild.id,
-			adapterCreator:ch.guild.voiceAdapterCreator
-		});
-		conn.subscribe(p);
-
-		await play({
-			speaker:0,
-			text:'接続しました'
-		});
-
-		await intr.reply('ok');
-	},{desc:'connect to vc'}),
-	dc:Object.assign(intr=>(disconn(),intr.reply('ok')),{desc:'disconnect from vc'})
+	con:{
+		desc:'参加中のボイスチャンネルに接続します',
+		exec:async(
+			intr,
+			g=intr.guild,
+			ch=intr?.member?.voice?.channel
+		)=>(
+			!g?await intr.reply('サーバでのみ有効です'):
+			!ch?await intr.reply('ボイスチャンネルに接続していないようです'):(
+				((
+					conn=joinVoiceChannel({channelId:ch.id,guildId:g.id,adapterCreator:g.voiceAdapterCreator}),
+					p=createAudioPlayer(),
+					script_q=[],running=false,run_ev=new EventTarget(),
+					pl_q=[],lk=_=>_,
+					url=({path,params,base=CFG.vv_http})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
+					pl=async({w,e})=>(
+						running=true,
+						await e.reduce(async(a,x)=>(
+							await a,
+							pl_q.length>2&&await new Promise(f=>lk=f),// queue lengt keeper
+							x=await fetch(url({path:'synthesis',params:w}),{
+								headers:{'Content-Type':'application/json'},
+								method:'POST',
+								body:JSON.stringify(x)
+							}),
+							x=createAudioResource(x.body),
+							p.state.status==AudioPlayerStatus.Idle?p.play(x):pl_q.push(x),
+							0
+						),0),
+						run_ev.dispatchEvent(new CustomEvent('done'))
+					)
+				)=>(
+					p.on('stateChange',(_,x)=>x.status==AudioPlayerStatus.Idle&&pl_q.length&&p.play(pl_q.shift(),lk())),
+					conn.subscribe(p),
+					run_ev.addEventListener('done',_=>script_q.length?pl(script_q.shift()):(running=false)),
+					gd[g.id]={
+						conn,p,ch,
+						play:async w=>(e=>(
+							e=e.accent_phrases.reduce((a,x)=>(
+								a.at(-1).push(x),x.pause_mora&&a.push([]),a
+							),[[]]).map(x=>({
+								...e,accent_phrases:x
+							})),
+							running?script_q.push({w,e}):pl({w,e})
+						))({
+								...await(await fetch(url({path:'audio_query',params:w}),{method:'POST'})).json(),
+								prePhonemeLength:0,postPhonemeLength:0
+						})
+					}
+				))().play({
+					speaker:0,
+					text:'接続しました'
+				}),
+				await intr.reply(`<#${ch.id}>に接続しました`)
+			)
+		)
+	},
+	dc:{
+		desc:'ボイスチャンネルから切断します',
+		exec:async(
+			intr,
+			g=intr.guild,
+		)=>(
+			!g?await intr.reply('サーバでのみ有効です'):
+			await intr.reply(`<#${disconn(g.id)?.id}>から切断しました`)
+		)
+	}
 };
-let conn;
 
 
 await(async()=>await(await fetch(new URL('version',CFG.vv_http))).text())().catch(e=>(
-	console.log('booting vv-engine...'),
+	console.log('booting engine...'),
 	Bun.spawn([CFG.vv_bin])
 ));
 
 
-cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.(intr));
-cli.on(Events.MessageCreate,async msg=>msg.author.bot||await play({
+cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec?.(intr));
+cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play?.({
 	speaker:0,
 	text:msg.content
 }));
 cli.on(Events.VoiceStateUpdate,async(a,b)=>b.member.user.bot||(
-	(!a.channel&&b.channel)&&await play({
+	(!a.channel&&b.channel)&&await gd[a.guild.id]?.play?.({
 		speaker:0,
 		text:`${b.member.user.tag} さんが入室しました`
 	}),
 	(a.channel&&!b.channel)&&
-		a.channel.members.filter(x=>!x.user.bot).size?await play({
+		a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play?.({
 			speaker:0,
 			text:`${b.member.user.tag} さんが退室しました`
-		}):disconn()
+		}):disconn(a.guild.id)
 ));
 
 cli.once(Events.ClientReady,async cli=>(
