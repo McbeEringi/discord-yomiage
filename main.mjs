@@ -80,10 +80,10 @@ cmds={
 								prePhonemeLength:0,postPhonemeLength:0
 						})
 					}
-				))().play({
-					speaker:0,
-					text:'接続しました'
-				}),
+				))().play((i=>({
+					speaker:i,
+					text:i&1?'接続したのだ':'接続しました'
+				}))(Math.random()*4|0)),
 				await intr.reply(`<#${ch.id}>に接続しました`)
 			)
 		)
@@ -115,7 +115,7 @@ console.log(sid);
 
 cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec(intr));
 cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
-	speaker:msg.author.id%8,
+	speaker:msg.author.id%4,
 	text:encode(
 		msg.content
 			.replace(/\n/g,' ')
@@ -146,16 +146,16 @@ cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.g
 	),{}))
 }));
 cli.on(Events.VoiceStateUpdate,async(a,b)=>b.member.user.bot||(
-	(!a.channel&&b.channel)&&await gd[a.guild.id]?.play({
+	(!a.channel&&b.channel&&b.channel.id==gd[a.guild.id]?.ch.id)&&await gd[a.guild.id]?.play({
 		// speaker:0,
-		speaker:b.member.id%8,
-		text:`${b.member.user.displayName} さんが入室しました`
+		speaker:b.member.id%4,
+		text:`${b.member.user.displayName} さんが入室し${b.member.id%2?'たのだ':'ました'}`
 	}),
-	(a.channel&&!b.channel)&&(
+	(a.channel&&!b.channel&&a.channel.id==gd[a.guild.id]?.ch.id)&&(
 		a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play({
 			// speaker:0,
-			speaker:b.member.id%8,
-			text:`${b.member.user.displayName} さんが退室しました`
+			speaker:b.member.id%4,
+			text:`${b.member.user.displayName} さんが退室し${b.member.id%2?'たのだ':'ました'}`
 		}):disconn(a.guild.id)
 	)
 ));
