@@ -1,5 +1,5 @@
 #!/bin/bun
-import{Client,GatewayIntentBits,Events}from'discord.js';
+import{Client,GatewayIntentBits,Events,ChannelType}from'discord.js';
 import{joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus}from'@discordjs/voice';
 import{encode}from'emoji-to-short-name';
 import CFG from'./config.toml';
@@ -13,6 +13,21 @@ cli=new Client({intents:[
 	GatewayIntentBits.MessageContent
 ]}),
 gd={},
+	td=new TextDecoder(),
+reltime=t=>(
+	t=t-Math.round(Date.now()/1000),
+	Object.entries({
+		year:31536000,
+		quarter:7884000,
+		month:2592000,
+		week:345600,
+		day:86400,
+		hour:3600,
+		minute:60,
+	}).reduce((a,[k,v])=>(
+		a||v<=Math.abs(t)&&[t/v|0,k]
+	),null)||[t,'second']
+),
 
 disconn=g=>(gd[g]?.conn.destroy(),[gd[g]?.ch,delete gd[g]][0]),
 cmds={
@@ -86,17 +101,36 @@ cmds={
 };
 
 
-await(async()=>await(await fetch(new URL('version',CFG.vv_http))).text())().catch(e=>(
+await(async()=>await(await fetch(new URL('version',CFG.vv_http))).text())().catch(async e=>(
 	console.log('booting engine...'),
-	Bun.spawn([CFG.vv_bin])
+	e=Bun.spawn([CFG.vv_bin],{stderr:'pipe'}).stderr.getReader(),
+	await new Promise(async f=>{while(1)td.decode((await e.read()).value).includes(CFG.vv_http)?f():await new Promise(f=>setTimeout(f,100));}),
+	e.cancel(),
+	console.log('engine ready')
 ));
+
+const sid=(await(await fetch(new URL('speakers',CFG.vv_http))).json()).flatMap(x=>x.styles.map(y=>[y.id,[y.name,x.name]])).reduce((a,[k,v])=>(a[k]=v,a),{});
+console.log(sid);
 
 
 cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec(intr));
 cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
-	speaker:0,
+	speaker:msg.author.id%8,
 	text:encode(
-		msg.content.replace(/https?:\/\/[\w\-_\.!~*')(%\/#\?]*/g,'URL省略')
+		msg.content
+			.replace(/https?:\/\/([^?#\/\s]+)\S*/g,(_,x)=>x.replace(/\./g,'ドット'))
+			.replace(/<@!?(\d+)>/g,(_,x)=>msg.mentions?.members.get(x)?.displayName)
+			.replace(/<#(\d+)>/g,(_,x)=>(
+				x=msg.mentions?.channels.get(x),
+				(x?.type==ChannelType.GuildVoice?'ボイチャ':'')+x?.name
+			))
+			.replace(/<@&(\d+)>/g,(_,x)=>'@'+msg.mentions?.roles.get(x)?.name)
+			.replace(/<a?(:[\w_]+:)\d+>/g,'$1')
+			.replace(/<t:(\d+)(:([tTdDfFsSR]))?>/g,(_,x,__,y)=>y=='R'?(
+				new Intl.RelativeTimeFormat('ja').format(...reltime(x)).replace(/\s/g,'')
+			):new Intl.DateTimeFormat('ja',{
+				t:{timeStyle:"full"},d:{dateStyle:"full"}
+			}[y?.toLowerCase()]??{dateStyle:"full",timeStyle:"full"}).format(new Date(x*1000)))
 	)+(w=>!w?'':' '+Object.entries(w).map(([x,n])=>(
 		(1<n?`${n}${x=='image'?'枚':'個'}の`:'')+{
 			pdf:'PDF',zip:'ZIPファイル',json:'JSONファイル',
@@ -106,18 +140,20 @@ cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.g
 	)).join('、')+'。')([...msg.attachments.values()].reduce((a,x)=>(
 		x=x.contentType?.split(';')[0].split('/'),
 		x={pdf:1,zip:1,json:1}[x?.[1]]?x[1]:{audio:1,image:1,video:1,text:1}[x?.[0]]?x[0]:'file',
-		a[x]?a[x]++:(a[x]=1),
+		a[x]=(a[x]??0)+1,
 		a
 	),{}))
 }));
 cli.on(Events.VoiceStateUpdate,async(a,b)=>b.member.user.bot||(
 	(!a.channel&&b.channel)&&await gd[a.guild.id]?.play({
-		speaker:0,
+		// speaker:0,
+		speaker:b.member.id%8,
 		text:`${b.member.user.displayName} さんが入室しました`
 	}),
 	(a.channel&&!b.channel)&&(
 		a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play({
-			speaker:0,
+			// speaker:0,
+			speaker:b.member.id%8,
 			text:`${b.member.user.displayName} さんが退室しました`
 		}):disconn(a.guild.id)
 	)
