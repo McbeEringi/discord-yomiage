@@ -6,7 +6,8 @@ VOICEVOX ENGINEを用いたDiscord読み上げbot
 vv-engineをインストールして`config.toml`にパスを書く
 
 
-<https://discord.com/developers/applications>でアプリを作成、botのトークンを`token.json`に記載
+<https://discord.com/developers/applications>でアプリを作成してトークンを入手する
+botのトークンを`token_tmpl.mjs`を参考に`token.mjs`へ記載
 
 - サーバーのインストール
     - スコープ
