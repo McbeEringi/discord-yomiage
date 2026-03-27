@@ -111,12 +111,12 @@ cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.g
 cli.on(Events.VoiceStateUpdate,async(a,b)=>b.member.user.bot||(
 	(!a.channel&&b.channel)&&await gd[a.guild.id]?.play({
 		speaker:0,
-		text:`${b.member.user.tag} さんが入室しました`
+		text:`${b.member.user.displayName} さんが入室しました`
 	}),
 	(a.channel&&!b.channel)&&(
 		a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play({
 			speaker:0,
-			text:`${b.member.user.tag} さんが退室しました`
+			text:`${b.member.user.displayName} さんが退室しました`
 		}):disconn(a.guild.id)
 	)
 ));
