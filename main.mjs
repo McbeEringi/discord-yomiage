@@ -101,11 +101,12 @@ cli.on(Events.VoiceStateUpdate,async(a,b)=>b.member.user.bot||(
 		speaker:0,
 		text:`${b.member.user.tag} さんが入室しました`
 	}),
-	(a.channel&&!b.channel)&&
+	(a.channel&&!b.channel)&&(
 		a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play?.({
 			speaker:0,
 			text:`${b.member.user.tag} さんが退室しました`
 		}):disconn(a.guild.id)
+	)
 ));
 
 cli.once(Events.ClientReady,async cli=>(
