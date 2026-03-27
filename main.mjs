@@ -96,7 +96,7 @@ cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmd
 cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
 	speaker:0,
 	text:encode(
-		msg.content.replace(/https?:\/\/[\w\-_\.!~*')(%]*/g,'URL省略')
+		msg.content.replace(/https?:\/\/[\w\-_\.!~*')(%\/#\?]*/g,'URL省略')
 	)+(w=>!w?'':' '+Object.entries(w).map(([x,n])=>(
 		(1<n?`${n}${x=='image'?'枚':'個'}の`:'')+{
 			pdf:'PDF',zip:'ZIPファイル',json:'JSONファイル',
