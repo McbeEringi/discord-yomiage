@@ -95,7 +95,9 @@ await(async()=>await(await fetch(new URL('version',CFG.vv_http))).text())().catc
 cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec(intr));
 cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
 	speaker:0,
-	text:encode(msg.content)+(w=>!w?'':' '+Object.entries(w).map(([x,n])=>(
+	text:encode(
+		msg.content.replace(/https?:\/\/[\w\-_\.!~*')(%]*/g,'URL省略')
+	)+(w=>!w?'':' '+Object.entries(w).map(([x,n])=>(
 		(1<n?`${n}${x=='image'?'枚':'個'}の`:'')+{
 			pdf:'PDF',zip:'ZIPファイル',json:'JSONファイル',
 			audio:'オーディオファイル',image:'写真',video:'ビデオ',text:'テキストファイル',
