@@ -118,6 +118,7 @@ cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.g
 	speaker:msg.author.id%8,
 	text:encode(
 		msg.content
+			.replace(/\n/g,' ')
 			.replace(/https?:\/\/([^?#\/\s]+)\S*/g,(_,x)=>x.replace(/\./g,'ドット'))
 			.replace(/<@!?(\d+)>/g,(_,x)=>msg.mentions?.members.get(x)?.displayName)
 			.replace(/<#(\d+)>/g,(_,x)=>(
