@@ -1,6 +1,7 @@
 #!/bin/bun
 import{Client,GatewayIntentBits,Events}from'discord.js';
 import{joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus}from'@discordjs/voice';
+import{encode}from'emoji-to-short-name';
 import CFG from'./config.toml';
 import token from'./token.json';
 
@@ -13,7 +14,7 @@ cli=new Client({intents:[
 ]}),
 gd={},
 
-disconn=g=>(gd[g]?.conn?.destroy?.(),[gd[g]?.ch,delete gd[g]][0]),
+disconn=g=>(gd[g]?.conn.destroy(),[gd[g]?.ch,delete gd[g]][0]),
 cmds={
 	con:{
 		desc:'参加中のボイスチャンネルに接続します',
@@ -91,18 +92,29 @@ await(async()=>await(await fetch(new URL('version',CFG.vv_http))).text())().catc
 ));
 
 
-cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec?.(intr));
-cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play?.({
+cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec(intr));
+cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
 	speaker:0,
-	text:msg.content
+	text:encode(msg.content)+(w=>!w?'':' '+Object.entries(w).map(([x,n])=>(
+		(1<n?`${n}${x=='image'?'枚':'個'}の`:'')+{
+			pdf:'PDF',zip:'ZIPファイル',json:'JSONファイル',
+			audio:'オーディオファイル',image:'写真',video:'ビデオ',text:'テキストファイル',
+			file:'その他のファイル'
+		}[x]
+	)).join('、')+'。')([...msg.attachments.values()].reduce((a,x)=>(
+		x=x.contentType?.split(';')[0].split('/'),
+		x={pdf:1,zip:1,json:1}[x?.[1]]?x[1]:{audio:1,image:1,video:1,text:1}[x?.[0]]?x[0]:'file',
+		a[x]?a[x]++:(a[x]=1),
+		a
+	),{}))
 }));
 cli.on(Events.VoiceStateUpdate,async(a,b)=>b.member.user.bot||(
-	(!a.channel&&b.channel)&&await gd[a.guild.id]?.play?.({
+	(!a.channel&&b.channel)&&await gd[a.guild.id]?.play({
 		speaker:0,
 		text:`${b.member.user.tag} さんが入室しました`
 	}),
 	(a.channel&&!b.channel)&&(
-		a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play?.({
+		a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play({
 			speaker:0,
 			text:`${b.member.user.tag} さんが退室しました`
 		}):disconn(a.guild.id)
