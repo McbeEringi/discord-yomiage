@@ -1,6 +1,7 @@
 import{Client,GatewayIntentBits,Events,ChannelType}from'discord.js';
 import{joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus}from'@discordjs/voice';
-import{encode}from'emoji-to-short-name';
+// import{encode}from'emoji-to-short-name';
+import{demoji}from'./emoji.mjs';
 import CFG from'./config.toml';
 
 
@@ -80,7 +81,7 @@ cmds={
 			g=intr.guild,
 		)=>(
 			!g?await intr.reply('サーバでのみ有効です'):
-			await intr.reply(`<#${gd[g.id]?.disconn()?.id}>から切断しました`)
+			await intr.reply(`<#${gd[g.id]?.disconn()?.id??0}>から切断しました`)
 		)
 	}
 };
@@ -99,7 +100,7 @@ cmds={
 	cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec({intr,gd})),
 	cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
 		speaker:msg.author.id%4,
-		text:encode(
+		text:demoji(
 			msg.content
 				.replace(/\n/g,' ')
 				.replace(/https?:\/\/([^?#\/\s]+)\S*/g,(_,x)=>x.replace(/\./g,'ドット'))
@@ -114,7 +115,8 @@ cmds={
 					new Intl.RelativeTimeFormat('ja').format(...reltime(x)).replace(/\s/g,'')
 				):new Intl.DateTimeFormat('ja',{
 					t:{timeStyle:"full"},d:{dateStyle:"full"}
-				}[y?.toLowerCase()]??{dateStyle:"full",timeStyle:"full"}).format(new Date(x*1000)))
+				}[y?.toLowerCase()]??{dateStyle:"full",timeStyle:"full"}).format(new Date(x*1000))),
+			_=>_
 		)+(w=>!w?'':' '+Object.entries(w).map(([x,n])=>(
 			(1<n?`${n}${x=='image'?'枚':'個'}の`:'')+{
 				pdf:'PDF',zip:'ZIPファイル',json:'JSONファイル',
