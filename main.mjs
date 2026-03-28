@@ -15,6 +15,6 @@ const sid=(await(await fetch(new URL('speakers',CFG.vv_http))).json()).flatMap(x
 // console.log(sid);
 
 Object.entries(token).map(([k,v])=>Bun.spawn({
-	cmd:['bun','./cli.mjs',v],
+	cmd:['bun','--install=force','./cli.mjs',v],
 	ipc:(msg,proc)=>console.log(k,msg)
 }));
