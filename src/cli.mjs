@@ -4,29 +4,26 @@ import{demoji}from'./emoji.mjs';
 
 
 const
-reltime=t=>(
-	t=t-Math.round(Date.now()/1000),
-	Object.entries({
-		year:31536000,quarter:7884000,month:2592000,
-		week:345600,day:86400,hour:3600,minute:60
-	}).reduce((a,[k,v])=>(
-		a||v<=Math.abs(t)&&[t/v|0,k]
-	),0)||[t,'second']
-),
+msg={},
 cmds={
 	con:{
 		desc:'参加中のボイスチャンネルに接続します',
 		exec:async(
 			{intr,gd},
 			g=intr.guild,
-			ch=intr?.member?.voice?.channel
+			ch=intr?.member?.voice?.channel,
+			q2t=x=>x.accent_phrases.map(x=>x.moras.map(x=>x.text).join('')+(x.pause_mora?.text??'')).join('')
 		)=>(
 			!g?await intr.reply('サーバでのみ有効です'):
 			!ch?await intr.reply('ボイスチャンネルに接続していないようです'):(
 				((
 					conn=joinVoiceChannel({channelId:ch.id,guildId:g.id,adapterCreator:g.voiceAdapterCreator}),
 					p=createAudioPlayer(),
-					script_q=[],running=false,run_ev=new EventTarget(),
+					script_q=((s=new Set())=>(
+						s.get=(x=0)=>(x=s[Symbol.iterator]().drop(x).next().value,x&&s.delete(x)&&x),
+						s
+					))(),
+					running=false,run_ev=new EventTarget(),
 					pl_q=[],lk=_=>_,
 					url=({path,params,base=`http://localhost:50021`})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
 					pl=async({w,e})=>(
@@ -34,6 +31,7 @@ cmds={
 						await e.reduce(async(a,x)=>(
 							await a,
 							pl_q.length>2&&await new Promise(f=>lk=f),// queue length keeper
+							msg.debug&&log(['queue'],q2t(x)),
 							x=await fetch(url({path:'synthesis',params:w}),{
 								headers:{'Content-Type':'application/json'},
 								method:'POST',
@@ -48,7 +46,7 @@ cmds={
 				)=>(
 					p.on('stateChange',(_,x)=>x.status==AudioPlayerStatus.Idle&&pl_q.length&&p.play(pl_q.shift(),lk())),
 					conn.subscribe(p),
-					run_ev.addEventListener('done',_=>script_q.length?pl(script_q.shift()):(running=false)),
+					run_ev.addEventListener('done',_=>script_q.size?pl(script_q.get()):(running=false)),
 					gd[g.id]={
 						conn,p,ch,
 						disconn:_=>(conn.destroy(),delete gd[g.id],ch),
@@ -58,7 +56,8 @@ cmds={
 							),[[]]).map(x=>({
 								...e,accent_phrases:x
 							})),
-							running?script_q.push({w,e}):pl({w,e})
+							msg.debug&&log(['play'],e.map(q2t)),
+							running?script_q.add({w,e}):pl({w,e})
 						))({
 								...await(await fetch(url({path:'audio_query',params:w}),{method:'POST'})).json(),
 								prePhonemeLength:0,postPhonemeLength:0
@@ -83,6 +82,16 @@ cmds={
 		)
 	}
 },
+reltime=t=>(
+	t=t-Math.round(Date.now()/1000),
+	Object.entries({
+		year:31536000,quarter:7884000,month:2592000,
+		week:345600,day:86400,hour:3600,minute:60
+	}).reduce((a,[k,v])=>(
+		a||v<=Math.abs(t)&&[t/v|0,k]
+	),0)||[t,'second']
+),
+log=(...w)=>process.send({log:w}),
 main=({
 	token,
 	cli=new Client({intents:[
@@ -141,16 +150,15 @@ main=({
 		)
 	)),
 	cli.once(Events.ClientReady,async cli=>(
-		process.send(`Logged in as ${cli.user.tag}`),
+		log(['msg'],`Logged in as ${cli.user.tag}`),
 		await cli.application.commands.set(
 			Object.entries(cmds).map(([k,v])=>({name:k,description:v.desc}))
 		)
 	)),
 	cli.login(token),
-	process.send('connecting...'),
+	log(['msg'],'connecting...'),
 	cli
-),
-msg={};
+);
 
 process.on('message',m=>(
   // print message from parent

@@ -23,7 +23,9 @@ await boot({engines,log});
 Object.entries(token).map(([k,v],w)=>(
 	w=Bun.spawn({
 		cmd:['bun','--install=force','./src/cli.mjs',k],
-		ipc:(msg,proc)=>log(['bot',k],msg)
+		ipc:(msg,proc)=>(
+			msg.log&&log(['bot',k,...msg.log[0]??[]],...msg.log?.slice(1))
+		)
 	}),
-	w.send({name:k,token:v})
+	w.send({name:k,token:v,debug:0})
 ));
