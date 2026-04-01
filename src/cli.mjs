@@ -33,7 +33,7 @@ cmds={
 						running=true,
 						await e.reduce(async(a,x)=>(
 							await a,
-							pl_q.length>2&&await new Promise(f=>lk=f),// queue lengt keeper
+							pl_q.length>2&&await new Promise(f=>lk=f),// queue length keeper
 							x=await fetch(url({path:'synthesis',params:w}),{
 								headers:{'Content-Type':'application/json'},
 								method:'POST',
@@ -82,11 +82,9 @@ cmds={
 			await intr.reply(`<#${gd[g.id]?.disconn()?.id??0}>から切断しました`)
 		)
 	}
-};
-
-
-((
-	token=Bun.argv[2],
+},
+main=({
+	token,
 	cli=new Client({intents:[
 		GatewayIntentBits.Guilds,
 		GatewayIntentBits.GuildVoiceStates,
@@ -94,7 +92,7 @@ cmds={
 		GatewayIntentBits.MessageContent
 	]}),
 	gd={}
-)=>(
+})=>(
 	cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec({intr,gd})),
 	cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
 		speaker:BigInt(msg.author.id)%4n,
@@ -149,5 +147,13 @@ cmds={
 		)
 	)),
 	cli.login(token),
+	process.send('connecting...'),
 	cli
-))();
+),
+msg={};
+
+process.on('message',m=>(
+  // print message from parent
+	m.token&&main({token:m.token}),
+	Object.assign(msg,m)
+));
