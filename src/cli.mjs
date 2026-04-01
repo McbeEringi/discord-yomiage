@@ -1,8 +1,7 @@
 import{Client,GatewayIntentBits,Events,ChannelType}from'discord.js';
 import{joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus}from'@discordjs/voice';
-// import{encode}from'emoji-to-short-name';
 import{demoji}from'./emoji.mjs';
-import CFG from'./config.toml';
+import CFG from'../config.toml';
 
 
 const
@@ -30,7 +29,7 @@ cmds={
 					p=createAudioPlayer(),
 					script_q=[],running=false,run_ev=new EventTarget(),
 					pl_q=[],lk=_=>_,
-					url=({path,params,base=CFG.vv_http})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
+					url=({path,params,base=`http://localhost:50021`})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
 					pl=async({w,e})=>(
 						running=true,
 						await e.reduce(async(a,x)=>(
