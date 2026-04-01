@@ -4,14 +4,14 @@ import{engines}from'./config/engines.mjs';
 import{dl,boot}from'./src/engine_util.mjs';
 
 const
-log=((a={},l=0,s)=>(k=[],v,o=a)=>(
+log=process.stdout.isTTY?((a={},l=0,s)=>(k=[],v,o=a)=>(
 	k.reduce((a,k,i,{length:l})=>(i==l-1?(a[k]=v):a[k]??(a[k]={})),o),
 	a=o,
 	s=JSON.stringify(a,0,'\t')+'\n',
 	process.stdout.write(Array(l).fill('\x1b[2K').join('\x1b[1A')+s),
 	l=s.split('\n').length,
 	a
-))();
+))():(k,v)=>console.log(`${k.join('.')}:\t${v}`);
 
 await dl({engines,log});
 await boot({engines,log});
