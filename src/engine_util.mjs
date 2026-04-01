@@ -3,7 +3,7 @@ import{open}from'node:fs/promises';
 import{progress}from'@mcbeeringi/petit/zip';
 
 const
-dl=async({engines,log,li=i=>['engine',,i,'dl']})=>await Promise.all(
+dl=async({engines,log,li=i=>['engine',i,'dl']})=>await Promise.all(
 	Object.entries(engines.engines).map(async([i,x])=>(
 		log(li(i),'checking...'),
 		x=engines.filter.reduce((a,r,b)=>(
