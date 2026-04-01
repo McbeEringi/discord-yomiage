@@ -16,16 +16,20 @@ filter=[
 	new RegExp(process.arch)
 ],
 
-prog=(a=>(k,v)=>(
-	a[k]=v,
-	console.clear(),
-	console.log(a),
+prog=((a={},l=0,s)=>(k,v,o=a)=>(
+	o[k]=v,
+	a=o,
+	s=JSON.stringify(a,0,'\t'),
+	process.stdout.write(Array(l).fill('\x1b[2K').join('\x1b[1A')),
+	l=s.split('\n').length,
+	process.stdout.write(s),
 	a
-))({});
+))();
 
 
 await Promise.all(
 	Object.entries(repos).map(async([i,x])=>(
+		prog(i,'checking...'),
 		x=filter.reduce((a,r,b)=>(
 			b=a.filter(({name:x})=>r.test(x)),
 			b.length?b:a
@@ -35,15 +39,16 @@ await Promise.all(
 		x&&(
 			x.file=Bun.file(join(dl_dir(i),x.name)),
 			await x.file.exists()||(
+				prog(i,'new version found!'),
 				x.tmp_file=Bun.file(`${x.file.name}.part`),
 				await x.tmp_file.exists()||await x.tmp_file.write(''),
 				x.writer=(await open(x.tmp_file.name,{flags:'a'})).createWriteStream(),
 				// x.writer=x.tmp_file.writer({append:true}),
 				await(async o=>progress(
-					await(x=>x.status==416?new Response(''):x.status==206&&x.headers.get('content-range').startsWith(`bytes ${o}-`)?x:(
+					await(x=>x.status==206&&x.headers.get('content-range').startsWith(`bytes ${o}-`)?x:(
 						console.log(x),Promise.reject('Illegal response!')
 					))(await fetch(x.browser_download_url,{headers:{Range:`bytes=${o}-`}})),
-					([a,b])=>prog(i,`${((o+a)/(o+b)*100).toFixed(3)}%`)
+					([a,b])=>prog(i,`dl... ${((o+a)/(o+b)*100).toFixed(2).padStart(6,' ')}%`)
 				).body.pipeTo(new WritableStream({
 					write:w=>x.writer.write(w),
 					close:w=>x.writer.close()
@@ -52,6 +57,7 @@ await Promise.all(
 				await Bun.$`mv ${x.tmp_file.name} ${x.file.name}`
 			),
 			x.file=Bun.file(x.file.name),
+			prog(i,'done!'),
 			x
 		)
 	))
