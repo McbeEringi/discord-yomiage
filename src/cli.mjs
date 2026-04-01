@@ -1,7 +1,6 @@
 import{Client,GatewayIntentBits,Events,ChannelType}from'discord.js';
 import{joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus}from'@discordjs/voice';
 import{demoji}from'./emoji.mjs';
-import CFG from'../config.toml';
 
 
 const
@@ -98,7 +97,7 @@ cmds={
 )=>(
 	cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec({intr,gd})),
 	cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
-		speaker:msg.author.id%4,
+		speaker:BigInt(msg.author.id)%4n,
 		text:demoji(
 			msg.content
 				.replace(/\n/g,' ')
@@ -132,13 +131,13 @@ cmds={
 	cli.on(Events.VoiceStateUpdate,async(a,b)=>b.member.user.bot||(
 		(!a.channel&&b.channel&&b.channel.id==gd[a.guild.id]?.ch.id)&&await gd[a.guild.id]?.play({
 			// speaker:0,
-			speaker:b.member.id%4,
+			speaker:BigInt(b.member.id)%4n,
 			text:`${b.member.user.displayName} さんが入室し${b.member.id%2?'たのだ':'ました'}`
 		}),
 		(a.channel&&!b.channel&&a.channel.id==gd[a.guild.id]?.ch.id)&&(
 			a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play({
 				// speaker:0,
-				speaker:b.member.id%4,
+				speaker:BigInt(b.member.id)%4n,
 				text:`${b.member.user.displayName} さんが退室し${b.member.id%2?'たのだ':'ました'}`
 			}):gd[a.guild.id]?.disconn()
 		)
