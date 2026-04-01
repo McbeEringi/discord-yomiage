@@ -19,47 +19,56 @@ cmds={
 				((
 					conn=joinVoiceChannel({channelId:ch.id,guildId:g.id,adapterCreator:g.voiceAdapterCreator}),
 					p=createAudioPlayer(),
-					script_q=((s=new Set())=>(
+					genq=(s=new Set())=>(
 						s.get=(x=0)=>(x=s[Symbol.iterator]().drop(x).next().value,x&&s.delete(x)&&x),
 						s
-					))(),
-					running=false,run_ev=new EventTarget(),
-					pl_q=[],lk=_=>_,
+					),
+					script_q=genq(),cur=null,pl_ev=new EventTarget(),
+					pl_q=genq(),lk=_=>_,
 					url=({path,params,base=`http://localhost:50021`})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
-					pl=async({w,e})=>(
-						running=true,
-						await e.reduce(async(a,x)=>(
+					pl=async w=>(
+						cur=w,
+						await w.q.reduce(async(a,x)=>(
 							await a,
-							pl_q.length>2&&await new Promise(f=>lk=f),// queue length keeper
-							msg.debug&&log(['queue'],q2t(x)),
-							x=await fetch(url({path:'synthesis',params:w}),{
-								headers:{'Content-Type':'application/json'},
-								method:'POST',
-								body:JSON.stringify(x)
-							}),
-							x=createAudioResource(x.body),
-							p.state.status==AudioPlayerStatus.Idle?p.play(x):pl_q.push(x),
+							w.p&&(
+								pl_q.size>2&&await new Promise(f=>lk=f),// queue length keeper
+								msg.debug&&log(['queue'],q2t(x)),
+								x=await fetch(url({path:'synthesis',params:w.p}),{
+									headers:{'Content-Type':'application/json'},
+									method:'POST',
+									body:JSON.stringify(x)
+								}),
+								x=createAudioResource(x.body),
+								p.state.status==AudioPlayerStatus.Idle?p.play(x):pl_q.add(x)
+							),
 							0
 						),0),
-						run_ev.dispatchEvent(new CustomEvent('done'))
+						pl_ev.dispatchEvent(new CustomEvent('done'))
 					)
 				)=>(
-					p.on('stateChange',(_,x)=>x.status==AudioPlayerStatus.Idle&&pl_q.length&&p.play(pl_q.shift(),lk())),
+					p.on('stateChange',(_,x)=>x.status==AudioPlayerStatus.Idle&&pl_q.size&&p.play(pl_q.get(),lk())),
 					conn.subscribe(p),
-					run_ev.addEventListener('done',_=>script_q.size?pl(script_q.get()):(running=false)),
+					pl_ev.addEventListener('done',_=>script_q.size?pl(script_q.get()):(cur=null)),
 					gd[g.id]={
-						conn,p,ch,
+						conn,p,ch,cur,
 						disconn:_=>(conn.destroy(),delete gd[g.id],ch),
-						play:async w=>(e=>(
-							e=e.accent_phrases.reduce((a,x)=>(
+						skip:_=>cur?.stop(),
+						play:async p=>(q=>(
+							q=q.accent_phrases.reduce((a,x)=>(
 								a.at(-1).push(x),x.pause_mora&&a.push([]),a
 							),[[]]).map(x=>({
-								...e,accent_phrases:x
+								...q,accent_phrases:x
 							})),
-							msg.debug&&log(['play'],e.map(q2t)),
-							running?script_q.add({w,e}):pl({w,e})
+							msg.debug&&log(['play'],q.map(q2t)),
+							p={p,q,e:new EventTarget(),stop:_=>(
+								script_q.delete(p),
+								p.e.dispatchEvent(new CustomEvent('stop')),
+								delete p.q
+							)},
+							cur?script_q.add(p):pl(p),
+							p
 						))({
-								...await(await fetch(url({path:'audio_query',params:w}),{method:'POST'})).json(),
+								...await(await fetch(url({path:'audio_query',params:p}),{method:'POST'})).json(),
 								prePhonemeLength:0,postPhonemeLength:0
 						})
 					}
