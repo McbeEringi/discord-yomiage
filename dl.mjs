@@ -5,6 +5,7 @@ import{progress}from'@mcbeeringi/petit/zip';
 const
 engines_dir='engines',
 dl_dir=x=>join(engines_dir,x,'dl'),
+bin_dir=x=>join(engines_dir,x,'bin'),
 repos={
 	voicevox:'voicevox/voicevox_engine',
 	sharevox:'sharevox/sharevox_engine',
@@ -57,6 +58,9 @@ await Promise.all(
 				await Bun.$`mv ${x.tmp_file.name} ${x.file.name}`
 			),
 			x.file=Bun.file(x.file.name),
+			prog(i,'extracting...'),
+			await Bun.$`mkdir -p ${bin_dir(i)}`,
+			await Bun.$`${process.platform=='win32'?'tar':'bsdtar'} -xf ${x.file.name} -C ${bin_dir(i)}`,
 			prog(i,'done!'),
 			x
 		)
