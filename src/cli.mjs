@@ -20,10 +20,10 @@ cmds={
 					conn=joinVoiceChannel({channelId:ch.id,guildId:g.id,adapterCreator:g.voiceAdapterCreator}),
 					ap=createAudioPlayer(),e=new EventTarget(),
 					url=({path,params,port=50021,base=`http://localhost:${port}`})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
-					sc_q=(s=new Set())=>Object.assign(s,{
+					sc_q=((s=new Set())=>Object.assign(s,{
 						at:x=>s[Symbol.iterator]().drop(x).next().value,
 						shift:_=>(_=s[Symbol.iterator]().next().value,_&&s.delete(_)&&_)
-					})(),
+					}))(),
 					sy=async({params,q})=>createAudioResource((await fetch(url({path:'synthesis',params}),{method:'POST',body:JSON.stringify(q)})).body)
 				)=>(
 					(f=>(
