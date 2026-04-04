@@ -18,58 +18,50 @@ cmds={
 			!ch?await intr.reply('ボイスチャンネルに接続していないようです'):(
 				((
 					conn=joinVoiceChannel({channelId:ch.id,guildId:g.id,adapterCreator:g.voiceAdapterCreator}),
-					p=createAudioPlayer(),
-					genq=(s=new Set())=>(
-						s.get=(x=0)=>(x=s[Symbol.iterator]().drop(x).next().value,x&&s.delete(x)&&x),
-						s
-					),
-					script_q=genq(),cur=null,pl_ev=new EventTarget(),
-					pl_q=genq(),lk=_=>_,
-					url=({path,params,base=`http://localhost:50021`})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
-					pl=async w=>(
-						cur=w,
-						await w.q.reduce(async(a,x)=>(
-							await a,
-							w.p&&(
-								pl_q.size>2&&await new Promise(f=>lk=f),// queue length keeper
-								msg.debug&&log(['queue'],q2t(x)),
-								x=await fetch(url({path:'synthesis',params:w.p}),{
-									headers:{'Content-Type':'application/json'},
-									method:'POST',
-									body:JSON.stringify(x)
-								}),
-								x=createAudioResource(x.body),
-								p.state.status==AudioPlayerStatus.Idle?p.play(x):pl_q.add(x)
-							),
-							0
-						),0),
-						pl_ev.dispatchEvent(new CustomEvent('done'))
-					)
+					ap=createAudioPlayer(),e=new EventTarget(),
+					url=({path,params,port=50021,base=`http://localhost:${port}`})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
+					sc_q=(s=new Set())=>Object.assign(s,{
+						at:x=>s[Symbol.iterator]().drop(x).next().value,
+						shift:_=>(_=s[Symbol.iterator]().next().value,_&&s.delete(_)&&_)
+					})(),
+					sy=async({params,q})=>createAudioResource((await fetch(url({path:'synthesis',params}),{method:'POST',body:JSON.stringify(q)})).body)
 				)=>(
-					p.on('stateChange',(_,x)=>x.status==AudioPlayerStatus.Idle&&pl_q.size&&p.play(pl_q.get(),lk())),
-					conn.subscribe(p),
-					pl_ev.addEventListener('done',_=>script_q.size?pl(script_q.get()):(cur=null)),
+					(f=>(
+						e.addEventListener('add',async x=>f(ap.state)),
+						ap.on('stateChange',(_,x)=>f(x)),
+					))(async x=>x.status==AudioPlayerStatus.Idle&&(
+						x=[...sc_q].sort((a,b)=>b.prio-a.prio)[0]?.synth.next().value,
+						x&&ap.play(await x.ar)
+					)),
+					conn.subscribe(ap),
 					gd[g.id]={
-						conn,p,ch,cur,
+						conn,ap,ch,
 						disconn:_=>(conn.destroy(),delete gd[g.id],ch),
-						skip:_=>cur?.stop(),
-						play:async p=>(q=>(
-							q=q.accent_phrases.reduce((a,x)=>(
+						skip:_=>_,
+						play:async params=>((query,w,tmp)=>(
+							query=query.accent_phrases.reduce((a,x)=>(
 								a.at(-1).push(x),x.pause_mora&&a.push([]),a
 							),[[]]).map(x=>({
-								...q,accent_phrases:x
+								...query,accent_phrases:x
 							})),
-							msg.debug&&log(['play'],q.map(q2t)),
-							p={p,q,e:new EventTarget(),stop:_=>(
-								script_q.delete(p),
-								p.e.dispatchEvent(new CustomEvent('stop')),
-								delete p.q
-							)},
-							cur?script_q.add(p):pl(p),
-							p
+							w={
+								params,query,
+								synth:(f=>(
+									f(),
+									query[Symbol.iterator]().map(_=>(_=tmp.value,f(),tmp.done&&sc_q.delete(w),_))
+								))(
+									(i=>_=>tmp=i.next())(
+										query[Symbol.iterator]().map(q=>({ar:sy({params,q}),q}))
+									)
+								),
+								prio:1/params.text.length,
+								skip:_=>_
+							},
+							sc_q.add(w),
+							e.dispatchEvent(new CustomEvent('add'))
 						))({
-								...await(await fetch(url({path:'audio_query',params:p}),{method:'POST'})).json(),
-								prePhonemeLength:0,postPhonemeLength:0
+							...await(await fetch(url({path:'audio_query',params}),{method:'POST'})).json(),
+							prePhonemeLength:0,postPhonemeLength:0
 						})
 					}
 				))().play((i=>({
@@ -89,6 +81,16 @@ cmds={
 			!g?await intr.reply('サーバでのみ有効です'):
 			await intr.reply(`<#${gd[g.id]?.disconn()?.id??0}>から切断しました`)
 		)
+	// },
+	// skip:{
+	// 	desc:'読み上げ中のメッセージの読み上げを中断します',
+	// 	exec:async(
+	// 		{intr,gd},
+	// 		g=intr.guild,
+	// 	)=>(
+	// 		!g?await intr.reply('サーバでのみ有効です'):
+	// 		(gd[g.id]?.skip(),await intr.reply(`skip`))
+	// 	)
 	}
 },
 reltime=t=>(
