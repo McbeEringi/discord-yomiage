@@ -195,7 +195,11 @@ main=({
 			text:`${b.member.user.displayName} さんが入室し${b.member.id%2?'たのだ':'ました'}`
 		}),
 		gd[a.guild.id]??(
-			!a.channel&&b.channel&&b.selfMute&&b.channel.members.filter(x=>!x.user.bot).size==2&&connect({gd,ch:b.channel})
+			!a.channel&&b.channel&&b.selfMute&&b.channel.members.filter(x=>!x.user.bot).size==2&&connect({gd,ch:b.channel}).play({
+				// speaker:0,
+				speaker:BigInt(b.member.id)%4n,
+				text:(f=>`${f(`自動入室し`)}\n${f(`${b.member.user.displayName} さんが入室し`)}`)(x=>x+(b.member.id%2?'たのだ':'ました'))
+			})
 		),
 
 		(a.channel&&!b.channel&&a.channel.id==gd[a.guild.id]?.ch.id)&&(
