@@ -1,5 +1,6 @@
 import{Client,GatewayIntentBits,Events,ChannelType,REST,Routes,SlashCommandBuilder}from'discord.js';
 import{joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus,StreamType}from'@discordjs/voice';
+import{CronJob}from'cron';
 import{demoji}from'./emoji.mjs';
 
 
@@ -24,7 +25,19 @@ cmds={
 						at:x=>s[Symbol.iterator]().drop(x).next().value,
 						shift:_=>(_=s[Symbol.iterator]().next().value,_&&s.delete(_)&&_)
 					}))(),
-					sy=async({params,q})=>createAudioResource((await fetch(url({path:'synthesis',params}),{method:'POST',body:JSON.stringify(q)})).body)
+					sy=async({params,q})=>createAudioResource((await fetch(url({path:'synthesis',params}),{method:'POST',body:JSON.stringify(q)})).body),
+					pappo=w=>(
+						w=(n=>({
+							synth:Array(n)[Symbol.iterator]().map((_,i)=>(
+								i=i?i==n-1?2:1:0,
+								i==2&&sc_q.delete(w),
+								{ar:createAudioResource(Bun.file(`assets/pappo/${['start','loop','end'][i]}.opus`).stream(),{inputType:StreamType.OggOpus})}
+							)),
+							prio:1
+						}))(w+1),
+						sc_q.add(w),
+						e.dispatchEvent(new CustomEvent('add'))
+					)
 				)=>(
 					(f=>(
 						e.addEventListener('add',async x=>f(ap.state)),
@@ -63,18 +76,13 @@ cmds={
 							...await(await fetch(url({path:'audio_query',params}),{method:'POST'})).json(),
 							prePhonemeLength:0,postPhonemeLength:0
 						}),
-						pappo:w=>(
-							w=(n=>({
-								synth:Array(n)[Symbol.iterator]().map((_,i)=>(
-									i=i?i==n-1?2:1:0,
-									i==2&&sc_q.delete(w),
-									{ar:createAudioResource(Bun.file(`assets/pappo/${['start','loop','end'][i]}.opus`).stream(),{inputType:StreamType.OggOpus})}
-								)),
-								prio:1
-							}))(w+1),
-							sc_q.add(w),
-							e.dispatchEvent(new CustomEvent('add'))
-						)
+						pappo,
+						timesignal:CronJob.from({
+							cronTime:'0,30 * * * *',
+							onTick:(d=new Date())=>pappo(d.getMinutes()?1:d.getHours()%12||12),
+							start:true,
+							timeZone:'Asia/Tokyo'
+						})
 					}
 				))().play((i=>({
 					speaker:i,
