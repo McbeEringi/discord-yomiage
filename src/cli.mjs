@@ -189,15 +189,15 @@ main=({
 		),{}))
 	})),
 	cli.on(Events.VoiceStateUpdate,async(a,b)=>b.member.user.bot||(
-		(!a.channel&&b.channel&&b.channel.id==gd[a.guild.id]?.ch.id)&&(
-			await gd[a.guild.id]?.play({
-				// speaker:0,
-				speaker:BigInt(b.member.id)%4n,
-				text:`${b.member.user.displayName} さんが入室し${b.member.id%2?'たのだ':'ました'}`
-			})||(
-				b.selfMute&&b.channel.members.filter(x=>!x.user.bot).size==2&&connect({gd,ch:b.channel})
-			)
+		(!a.channel&&b.channel&&b.channel.id==gd[a.guild.id]?.ch.id)&&await gd[a.guild.id]?.play({
+			// speaker:0,
+			speaker:BigInt(b.member.id)%4n,
+			text:`${b.member.user.displayName} さんが入室し${b.member.id%2?'たのだ':'ました'}`
+		}),
+		gd[a.guild.id]??(
+			!a.channel&&b.channel&&b.selfMute&&b.channel.members.filter(x=>!x.user.bot).size==2&&connect({gd,ch:b.channel})
 		),
+
 		(a.channel&&!b.channel&&a.channel.id==gd[a.guild.id]?.ch.id)&&(
 			a.channel.members.filter(x=>!x.user.bot).size?await gd[a.guild.id]?.play({
 				// speaker:0,
