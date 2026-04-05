@@ -97,7 +97,12 @@ cmds={
 	pappo:{
 		desc:'鳩時計をN回鳴かせます',
 		build:x=>x
-		.addIntegerOption(o=>o.setName('n').setDescription('鳴く回数')),
+		.addIntegerOption(o=>o
+			.setName('n')
+			.setDescription('鳴く回数')
+			.setMinValue(1)
+			.setRequired(true)
+		),
 		exec:async(
 			{intr,gd},
 			g=intr.guild,
