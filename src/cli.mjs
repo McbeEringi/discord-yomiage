@@ -35,7 +35,7 @@ cmds={
 					)),
 					conn.subscribe(ap),
 					gd[g.id]={
-						conn,ap,ch,
+						conn,ap,ch,observe:new Set([ch.id,intr.channelId]),
 						disconn:_=>(conn.destroy(),delete gd[g.id],ch),
 						skip:_=>_,
 						play:async params=>((query,w,tmp)=>(
@@ -114,7 +114,7 @@ main=({
 	gd={}
 })=>(
 	cli.on(Events.InteractionCreate,async intr=>intr.isChatInputCommand()&&await cmds[intr.commandName]?.exec({intr,gd})),
-	cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&await gd[msg.guildId]?.play({
+	cli.on(Events.MessageCreate,async msg=>msg.author.bot||msg.guild&&gd[msg.guildId]?.observe.has(msg.channelId)&&await gd[msg.guildId].play({
 		speaker:BigInt(msg.author.id)%4n,
 		text:demoji(
 			msg.content
