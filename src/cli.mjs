@@ -6,73 +6,6 @@ import{demoji}from'./emoji.mjs';
 
 const
 msg={},
-connect=(
-	{gd,ch,g=ch.guild,observe_ch=[]},
-	{
-		conn=joinVoiceChannel({channelId:ch.id,guildId:g.id,adapterCreator:g.voiceAdapterCreator}),
-		ap=createAudioPlayer(),e=new EventTarget(),
-		url=({path,params,port=50021,base=`http://localhost:${port}`})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
-		sc_q=new Set(),
-		sy=async({params,q})=>createAudioResource((await fetch(url({path:'synthesis',params}),{method:'POST',body:JSON.stringify(q)})).body),
-		pappo=w=>(
-			w=(n=>({
-				synth:Array(n)[Symbol.iterator]().map((_,i)=>(
-					i=i?i==n-1?2:1:0,
-					i==2&&sc_q.delete(w),
-					{ar:createAudioResource(Bun.file(`assets/pappo/${['start','loop','end'][i]}.opus`).stream(),{inputType:StreamType.OggOpus})}
-				)),
-				prio:1
-			}))(w+1),
-			sc_q.add(w),
-			e.dispatchEvent(new CustomEvent('add'))
-		)
-	}={}
-)=>(
-	(f=>(
-		e.addEventListener('add',async x=>f(ap.state)),
-		ap.on('stateChange',(_,x)=>f(x)),
-	))(async x=>x.status==AudioPlayerStatus.Idle&&(
-		x=[...sc_q].sort((a,b)=>b.prio-a.prio)[0]?.synth.next().value,
-		x&&ap.play(await x.ar)
-	)),
-	conn.subscribe(ap),
-	gd[g.id]={
-		conn,ap,ch,observe:new Set([ch.id,...observe_ch]),
-		disconn:_=>(conn.destroy(),delete gd[g.id],ch),
-		skip:_=>_,
-		play:async params=>((query,w,tmp)=>(
-			query=query.accent_phrases.reduce((a,x)=>(
-				a.at(-1).push(x),x.pause_mora&&a.push([]),a
-			),[[]]).map(x=>({...query,accent_phrases:x})),
-			w={
-				params,query,
-				synth:(f=>(
-					f(),
-					query[Symbol.iterator]().map(_=>(_=tmp.value,f(),tmp.done&&sc_q.delete(w),_))
-				))(
-					(i=>_=>tmp=i.next())(
-						query[Symbol.iterator]().map(q=>({ar:sy({params,q}),q}))
-					)
-				),
-				prio:1/params.text.length,
-				skip:_=>_
-			},
-			sc_q.add(w),
-			e.dispatchEvent(new CustomEvent('add')),
-			w
-		))({
-			...await(await fetch(url({path:'audio_query',params}),{method:'POST'})).json(),
-			prePhonemeLength:0,postPhonemeLength:0
-		}),
-		pappo,
-		timesignal:(x=>(
-			x=CronJob.from({
-				cronTime:x,start:true,timeZone:'Asia/Tokyo',
-				onTick:(d=new Date())=>x==gd[g.id].timesignal?pappo(d.getMinutes()?1:d.getHours()%12||12):x.stop()
-			})
-		))('0,30 * * * *')
-	}
-),
 cmds={
 	con:{
 		desc:'参加中のボイスチャンネルに接続します',
@@ -135,6 +68,73 @@ cmds={
 	// 	)
 	}
 },
+connect=(
+	{gd,ch,g=ch.guild,observe_ch=[]},
+	{
+		conn=joinVoiceChannel({channelId:ch.id,guildId:g.id,adapterCreator:g.voiceAdapterCreator}),
+		ap=createAudioPlayer(),e=new EventTarget(),
+		url=({path,params,port=50021,base=`http://localhost:${port}`})=>Object.assign(new URL(path,base),{search:new URLSearchParams(params)}),
+		sc_q=new Set(),
+		sy=async({params,q})=>createAudioResource((await fetch(url({path:'synthesis',params}),{method:'POST',body:JSON.stringify(q)})).body),
+		pappo=w=>(
+			w=(n=>({
+				synth:Array(n)[Symbol.iterator]().map((_,i)=>(
+					i=i?i==n-1?2:1:0,
+					i==2&&sc_q.delete(w),
+					{ar:createAudioResource(Bun.file(`assets/pappo/${['start','loop','end'][i]}.opus`).stream(),{inputType:StreamType.OggOpus})}
+				)),
+				prio:1
+			}))(w+1),
+			sc_q.add(w),
+			e.dispatchEvent(new CustomEvent('add'))
+		)
+	}={}
+)=>(
+	(f=>(
+		e.addEventListener('add',x=>f(ap.state)),
+		ap.on('stateChange',(_,x)=>f(x)),
+	))(async x=>x.status==AudioPlayerStatus.Idle&&(
+		x=[...sc_q].sort((a,b)=>b.prio-a.prio)[0]?.synth.next().value,
+		x&&ap.play(await x.ar)
+	)),
+	conn.subscribe(ap),
+	gd[g.id]={
+		conn,ap,ch,observe:new Set([ch.id,...observe_ch]),
+		disconn:_=>(conn.destroy(),delete gd[g.id],ch),
+		skip:_=>_,
+		play:async params=>((query,w,tmp)=>(
+			query=query.accent_phrases.reduce((a,x)=>(
+				a.at(-1).push(x),x.pause_mora&&a.push([]),a
+			),[[]]).map(x=>({...query,accent_phrases:x})),
+			w={
+				params,query,
+				synth:(f=>(
+					f(),
+					query[Symbol.iterator]().map(_=>(_=tmp.value,f(),tmp.done&&sc_q.delete(w),_))
+				))(
+					(i=>_=>tmp=i.next())(
+						query[Symbol.iterator]().map(q=>({ar:sy({params,q}),q}))
+					)
+				),
+				prio:1/params.text.length,
+				skip:_=>_
+			},
+			sc_q.add(w),
+			e.dispatchEvent(new CustomEvent('add')),
+			w
+		))({
+			...await(await fetch(url({path:'audio_query',params}),{method:'POST'})).json(),
+			prePhonemeLength:0,postPhonemeLength:0
+		}),
+		pappo,
+		timesignal:(x=>(
+			x=CronJob.from({
+				cronTime:x,start:true,timeZone:'Asia/Tokyo',
+				onTick:(d=new Date())=>x==gd[g.id].timesignal?pappo(d.getMinutes()?1:d.getHours()%12||12):x.stop()
+			})
+		))('0,30 * * * *')
+	}
+),
 reltime=t=>(
 	t=t-Math.round(Date.now()/1000),
 	Object.entries({
