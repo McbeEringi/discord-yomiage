@@ -1,5 +1,5 @@
-import{Client,GatewayIntentBits,Events,ChannelType}from'discord.js';
-import{joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus}from'@discordjs/voice';
+import{Client,GatewayIntentBits,Events,ChannelType,REST,Routes,SlashCommandBuilder}from'discord.js';
+import{joinVoiceChannel,createAudioPlayer,createAudioResource,AudioPlayerStatus,StreamType}from'@discordjs/voice';
 import{demoji}from'./emoji.mjs';
 
 
@@ -62,7 +62,19 @@ cmds={
 						))({
 							...await(await fetch(url({path:'audio_query',params}),{method:'POST'})).json(),
 							prePhonemeLength:0,postPhonemeLength:0
-						})
+						}),
+						pappo:w=>(
+							w=(n=>({
+								synth:Array(n)[Symbol.iterator]().map((_,i)=>(
+									i=i?i==n-1?2:1:0,
+									i==2&&sc_q.delete(w),
+									{ar:createAudioResource(Bun.file(`assets/pappo/${['start','loop','end'][i]}.opus`).stream(),{inputType:StreamType.OggOpus})}
+								)),
+								prio:1
+							}))(w+1),
+							sc_q.add(w),
+							e.dispatchEvent(new CustomEvent('add'))
+						)
 					}
 				))().play((i=>({
 					speaker:i,
@@ -80,6 +92,23 @@ cmds={
 		)=>(
 			!g?await intr.reply('サーバでのみ有効です'):
 			await intr.reply(`<#${gd[g.id]?.disconn()?.id??0}>から切断しました`)
+		)
+	},
+	pappo:{
+		desc:'鳩時計をN回鳴かせます',
+		build:x=>x
+		.addIntegerOption(o=>o.setName('n').setDescription('鳴く回数')),
+		exec:async(
+			{intr,gd},
+			g=intr.guild,
+			n
+		)=>(
+			!g?await intr.reply('サーバでのみ有効です'):
+			(
+				n=intr.options.getInteger('n'),
+				gd[g.id]?.pappo(n),
+				await intr.reply(`pappo!`.repeat(n))
+			)
 		)
 	// },
 	// skip:{
@@ -161,12 +190,17 @@ main=({
 		)
 	)),
 	cli.once(Events.ClientReady,async cli=>(
-		log(['msg'],`Logged in as ${cli.user.tag}`),
-		await cli.application.commands.set(
-			Object.entries(cmds).map(([k,v])=>({name:k,description:v.desc}))
-		)
+		// await cli.application.commands.set(
+		// 	Object.entries(cmds).map(([k,v])=>({name:k,description:v.desc}))
+		// )
+		await new REST({version:'10'}).setToken(cli.token).put(
+			Routes.applicationCommands(cli.user.id),
+			{body:Object.entries(cmds).map(([k,v])=>(v.build??(_=>_))(new SlashCommandBuilder().setName(k).setDescription(v.desc)).toJSON())}
+		),
+		log(['msg'],`Logged in as ${cli.user.tag}`)
 	)),
 	cli.login(token),
+
 	log(['msg'],'connecting...'),
 	cli
 );
