@@ -77,12 +77,14 @@ cmds={
 							prePhonemeLength:0,postPhonemeLength:0
 						}),
 						pappo,
-						timesignal:CronJob.from({
-							cronTime:'0,30 * * * *',
-							onTick:(d=new Date())=>pappo(d.getMinutes()?1:d.getHours()%12||12),
-							start:true,
-							timeZone:'Asia/Tokyo'
-						})
+						timesignal:(x=>(
+							x=CronJob.from({
+								cronTime:x,
+								onTick:(d=new Date())=>x==gd[g.id].timesignal?pappo(d.getMinutes()?1:d.getHours()%12||12):x.stop(),
+								start:true,
+								timeZone:'Asia/Tokyo'
+							})
+						))('0,30 * * * *')
 					}
 				))().play((i=>({
 					speaker:i,
@@ -109,7 +111,7 @@ cmds={
 			.setName('n')
 			.setDescription('鳴く回数')
 			.setMinValue(1)
-			.setRequired(true)
+			// .setRequired(true)
 		),
 		exec:async(
 			{intr,gd},
@@ -118,7 +120,7 @@ cmds={
 		)=>(
 			!g?await intr.reply('サーバでのみ有効です'):
 			(
-				n=intr.options.getInteger('n'),
+				n=intr.options.getInteger('n')??new Date().getHours(),
 				gd[g.id]?.pappo(n),
 				await intr.reply(`pappo!`.repeat(n))
 			)
