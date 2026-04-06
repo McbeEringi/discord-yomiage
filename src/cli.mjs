@@ -51,7 +51,7 @@ cmds={
 		)=>(
 			!g?await intr.reply('サーバでのみ有効です'):
 			(
-				n=intr.options.getInteger('n')??new Date().getHours(),
+				n=intr.options.getInteger('n')??new Date().getHours()%12||12,
 				gd[g.id]?.pappo(n),
 				await intr.reply(`pappo!`.repeat(n))
 			)
