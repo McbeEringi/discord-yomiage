@@ -1,7 +1,7 @@
 #!/bin/bun
 import{token}from'./config/token.mjs';
 import{engines}from'./config/engines.mjs';
-import{dl,boot}from'./src/engine_util.mjs';
+import{dl,boot,check,spk}from'./src/engine_util.mjs';
 
 const
 log=process.stdout.isTTY?((a={},l=0,s)=>(k=[],v,o=a)=>(
@@ -16,12 +16,18 @@ log=process.stdout.isTTY?((a={},l=0,s)=>(k=[],v,o=a)=>(
 	a
 ))():(k,v)=>console.log(`${k.join('.')}:\t${v}`);
 
-await dl({engines,log});
-await boot({engines,log});
 
+await Promise.all(Object.entries(engines.engines).map(async(engine,i)=>(
+	i=engine[0],
+	await dl({engine,dir:engines.dir,log:x=>log(['engine',i,'dl'],x)}),
+	await boot({engine,dir:engines.dir,log:x=>log(['engine',i,'boot'],x)}),
+	await check({engine,log:x=>log(['engine',i,'check'],x)}),
+	// console.log(
+	// await spk({engine})
+	// ),
+	0
+)));
 
-// const sid=(await(await fetch(new URL('speakers','http://localhost:50021'))).json()).flatMap(x=>x.styles.map(y=>[y.id,[y.name,x.name]])).reduce((a,[k,v])=>(a[k]=v,a),{});
-// log('sid',sid);
 
 Object.entries(token).map(([k,v],w)=>(
 	w=Bun.spawn({
