@@ -4,15 +4,15 @@ import{progress}from'@mcbeeringi/petit/zip';
 
 const
 dl=async({engines,log,li=i=>['engine',i,'dl']})=>await Promise.all(
-	Object.entries(engines.engines).map(async([i,x])=>(
+	Object.entries(engines.engines).map(async([i,x])=>x.dl?.repo&&x.dl?.filter?(
 		log(li(i),'checking...'),
-		x=engines.filter.reduce((a,r,b)=>(
+		x=x.dl.filter.reduce((a,r,b)=>(
 			b=a.filter(({name:x})=>r.test(x)),
 			b.length?b:a
 		),(await(
-			await fetch(`https://api.github.com/repos/${x.repo}/releases/latest`)
+			await fetch(`https://api.github.com/repos/${x.dl.repo}/releases/latest`)
 		).json()).assets)[0],
-		x&&(
+		x?(
 			x.file=Bun.file(join(engines.dir.dl(i),x.name)),
 			await x.file.exists()||(
 				log(li(i),'new version found!'),
@@ -40,22 +40,22 @@ dl=async({engines,log,li=i=>['engine',i,'dl']})=>await Promise.all(
 			),
 			log(li(i),`OK latest=${x.name}`),
 			x
-		)
-	))
+		):log(li(i),'no match assett!')
+	):log(li(i),'"dl" empty or illegal. download skipped.'))
 ),
-boot=async({log,engines,li=i=>['engine',i,'boot']})=>await Promise.all(Object.entries(engines.engines).map(async([i,x])=>(
+boot=async({log,engines,li=i=>['engine',i,'boot']})=>await Promise.all(Object.entries(engines.engines).map(async([i,x])=>x.port?(
 	await fetch(new URL('version',`http://localhost:${x.port}`))
 	.then(
 		async r=>log(li(i),`already running? version=${await r.text()}`),
-		async(e,td=new TextDecoder())=>(
+		async(e,td=new TextDecoder())=>x.bin?(
 			log(li(i),'booting...'),
 			e=Bun.spawn([join(engines.dir.bin(i),x.bin)],{stderr:'pipe'}).stderr.getReader(),
 			await new Promise(async f=>{while(1){if(td.decode((await e.read()).value).includes('startup complete')){f();break;}else await new Promise(f=>setTimeout(f,100));}}),
 			e.cancel(),
 			e=await(await fetch(new URL('version',`http://localhost:${x.port}`))).json(),
 			log(li(i),`OK version=${e}`)
-		)
+		):log(li(i),'"bin" empty. boot skipped.')
 	)
-)));
+):log(li(i),'"port" empty. check skipped.')));
 export{dl,boot};
 

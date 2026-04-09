@@ -31,5 +31,5 @@ Object.entries(token).map(([k,v],w)=>(
 			msg.log&&log(['bot',k,...msg.log[0]??[]],...msg.log?.slice(1))
 		)
 	}),
-	w.send({name:k,token:v,debug:0})
+	w.send({name:k,token:v})
 ));
