@@ -56,16 +56,16 @@ cmds={
 				await intr.reply(`pappo!`.repeat(n))
 			)
 		)
-	// },
-	// skip:{
-	// 	desc:'読み上げ中のメッセージの読み上げを中断します',
-	// 	exec:async(
-	// 		{intr,gd},
-	// 		g=intr.guild,
-	// 	)=>(
-	// 		!g?await intr.reply('サーバでのみ有効です'):
-	// 		(gd[g.id]?.skip(),await intr.reply(`skip`))
-	// 	)
+	},
+	skip:{
+		desc:'読み上げ中のメッセージの読み上げを中断します',
+		exec:async(
+			{intr,gd},
+			g=intr.guild,
+		)=>(
+			!g?await intr.reply('サーバでのみ有効です'):
+			(gd[g.id]?.skip(),await intr.reply(`skip`))
+		)
 	}
 },
 connect=(
@@ -83,7 +83,8 @@ connect=(
 					i==2&&sc_q.delete(w),
 					{ar:createAudioResource(Bun.file(`assets/pappo/${['start','loop','end'][i]}.opus`).stream(),{inputType:StreamType.OggOpus})}
 				)),
-				prio:1
+				prio:1,
+				skip:_=>(sc_q.delete(w),ap.cur==w&&ap.stop())
 			}))(w+1),
 			sc_q.add(w),
 			e.dispatchEvent(new CustomEvent('add'))
@@ -94,14 +95,17 @@ connect=(
 		e.addEventListener('add',x=>f(ap.state)),
 		ap.on('stateChange',(_,x)=>f(x)),
 	))(async x=>x.status==AudioPlayerStatus.Idle&&(
-		x=[...sc_q].sort((a,b)=>b.prio-a.prio)[0]?.synth.next().value,
-		x&&ap.play(await x.ar)
+		x=[...sc_q].sort((a,b)=>b.prio-a.prio)[0],
+		ap.cur=x,
+		x&&(
+			ap.play(await x.synth.next().value.ar)
+		)
 	)),
 	conn.subscribe(ap),
 	gd[g.id]={
 		conn,ap,ch,observe:new Set([ch.id,...observe_ch]),
 		disconn:_=>(conn.destroy(),delete gd[g.id],ch),
-		skip:_=>_,
+		skip:_=>ap.cur?.skip(),
 		play:async params=>((query,w,tmp)=>(
 			query=query.accent_phrases.reduce((a,x)=>(
 				a.at(-1).push(x),x.pause_mora&&a.push([]),a
@@ -117,7 +121,7 @@ connect=(
 					)
 				),
 				prio:1/params.text.length,
-				skip:_=>_
+				skip:_=>(sc_q.delete(w),ap.cur==w&&ap.stop())
 			},
 			sc_q.add(w),
 			e.dispatchEvent(new CustomEvent('add')),
