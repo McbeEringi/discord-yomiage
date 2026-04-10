@@ -52,9 +52,8 @@ boot=async({
 		async r=>log(`already running?`),
 		async(e,td=new TextDecoder())=>x.bin?(
 			log('booting...'),
-			e=Bun.spawn([join(dir.bin(i),x.bin)],{stderr:'pipe'}).stderr.getReader(),
-			await new Promise(async f=>{while(1){if(td.decode((await e.read()).value).includes('startup complete')){f();break;}else await new Promise(f=>setTimeout(f,100));}}),
-			e.cancel(),
+			e=Bun.spawn([join(dir.bin(i),x.bin)],{stderr:'pipe'}),
+			await new Promise(f=>e.stderr.pipeTo(new WritableStream({write:x=>td.decode(x).includes('Uvicorn running')&&f()}))),
 			log(`OK`)
 		):log('bin empty. boot skipped.')
 	)
