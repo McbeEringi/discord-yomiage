@@ -95,7 +95,7 @@ connect=(
 		e.addEventListener('add',x=>f(ap.state)),
 		ap.on('stateChange',(_,x)=>f(x)),
 	))(async x=>x.status==AudioPlayerStatus.Idle&&(
-		x=[...sc_q].sort((a,b)=>b.prio-a.prio)[0],
+		x=sc_q[Symbol.iterator]().reduce((a,b)=>a?a.prio<b.prio?b:a:b,null),
 		ap.cur=x,
 		x&&(
 			ap.play(await x.synth.next().value.ar)
