@@ -139,7 +139,10 @@ connect=(
 					play({speaker:0,text:`${d.getHours()}時になりました`}):
 					x.stop()
 			})
-		))('0,30 * * * *')
+		))(
+			//'0,30 * * * *'
+			'0 * * * *'
+		)
 	}
 ),
 reltime=t=>(
