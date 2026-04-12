@@ -131,12 +131,12 @@ connect=(
 			prePhonemeLength:0,postPhonemeLength:0
 		}),
 		pappo,
-		timesignal:(x=>(
-			x=CronJob.from({
-				cronTime:x,start:true,timeZone:'Asia/Tokyo',
-				onTick:(d=new Date())=>x==gd[g.id]?.timesignal?pappo(d.getMinutes()?1:d.getHours()%12||12):x.stop()
-			})
-		))('0,30 * * * *')
+		// timesignal:(x=>(
+		// 	x=CronJob.from({
+		// 		cronTime:x,start:true,timeZone:'Asia/Tokyo',
+		// 		onTick:(d=new Date())=>x==gd[g.id]?.timesignal?pappo(d.getMinutes()?1:d.getHours()%12||12):x.stop()
+		// 	})
+		// ))('0,30 * * * *')
 	}
 ),
 reltime=t=>(
