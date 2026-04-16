@@ -14,7 +14,11 @@ log=process.stdout.isTTY?((a={},l=0,s)=>(k=[],v,o=a)=>(
 	),
 	l=s.split('\n').length,
 	a
-))():(k,v)=>console.log(`${k.join('.')}:\t${v}`);
+))():(k,v)=>console.log(`${k.join('.')}:\t${v}`),
+netwait=_=>(x=>x??(x=(async()=>{
+	while(await fetch('http://connectivitycheck.gstatic.com/generate_204').then(_=>0,_=>1))await Bun.sleep(4000);
+	x=null
+})()))();
 
 
 await Promise.all(Object.entries(engines.engines).map(async(engine,i)=>(
@@ -29,13 +33,18 @@ await Promise.all(Object.entries(engines.engines).map(async(engine,i)=>(
 )));
 
 
-Object.entries(token).map(([k,v],w)=>(
-	w=Bun.spawn({
-		cmd:['bun','--install=force','./src/cli.mjs',k],
-		// stdout:'inherit',
-		ipc:(msg,proc)=>(
-			msg.log&&log(['bot',k,...msg.log[0]??[]],...msg.log?.slice(1))
-		)
-	}),
-	w.send({name:k,token:v})
-));
+Object.entries(token).map(async([k,v],w)=>{
+	while(1){
+		log(['bot',k,'msg'],'network...');
+		await netwait();
+		w=Bun.spawn({
+			cmd:['bun','--install=force','./src/cli.mjs',k],
+			// stdout:'inherit',
+			ipc:(msg,proc)=>(
+				msg.log&&log(['bot',k,...msg.log[0]??[]],...msg.log?.slice(1))
+			)
+		});
+		w.send({name:k,token:v});
+		await w.exited
+	}
+});
