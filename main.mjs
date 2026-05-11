@@ -1,4 +1,4 @@
-#!/bin/bun
+#!/usr/bin/env -S bun --install=force
 import{token}from'./config/token.mjs';
 import{engines}from'./config/engines.mjs';
 import{dl,boot,check,spk}from'./src/engine_util.mjs';

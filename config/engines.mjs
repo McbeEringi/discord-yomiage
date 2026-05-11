@@ -2,8 +2,8 @@ import{join}from'node:path';
 const
 filter=[
 	/\.vvpp$/,
-	/cpu/,
 	new RegExp((_=>({win32:'windows',darwin:'macos'}[_]??_))(process.platform)),
+	/cpu/,
 	new RegExp(process.arch)
 ],
 engines={

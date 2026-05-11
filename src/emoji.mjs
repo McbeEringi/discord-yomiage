@@ -1,4 +1,4 @@
-#!/bin/bun
+#!/usr/bin/env -S bun --install=force
 import{annotations as _cldr}from'cldr-annotations-full/annotations/ja/annotations.json';
 
 const
