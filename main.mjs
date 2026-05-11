@@ -21,6 +21,7 @@ netwait=_=>(x=>x??(x=(async()=>{
 })()))();
 
 
+await netwait();
 await Promise.all(Object.entries(engines.engines).map(async(engine,i)=>(
 	i=engine[0],
 	await dl({engine,dir:engines.dir,log:x=>log(['engine',i,'dl'],x)}),
